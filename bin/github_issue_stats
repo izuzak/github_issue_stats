@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+
+require "optparse"
+require "github_issue_stats"
+
+ARGV.push('-h') if ARGV.empty?
+
+version = "0.1.0"
+options = {}
+
+options[:verbose] = false
+options[:output_format] = 'text'
+options[:token] = ENV["GITHUB_OAUTH_TOKEN"]
+options[:labels] = "issues"
+options[:interval_length] = "1w"
+options[:interval_count] = 4
+
+opt_parser = OptionParser.new do |opts|
+  opts.banner = "GitHub Issue Stats -- simple program for collecting stats on issues in GitHub repositories.\n\nUsage: github_issue_stats [options]"
+
+  opts.separator ""
+  opts.separator "Specific options:"
+
+  opts.on("-t", "--token [STRING]", String,
+          "GitHub OAuth token for making API calls. If not specified,",
+          "the GITHUB_OAUTH_TOKEN environment variable is used.",
+          "Create a token here: https://github.com/settings/token", "\n") do |token|
+    options[:token] = token
+  end
+
+  opts.on("-s", "--scopes x,y,z", Array,
+          "List of scopes for which stats will be collected. A scope is",
+          "a username or repo name. Example: --scopes github,rails/rails", "\n") do |scopes|
+    options[:scopes] = scopes
+  end
+
+  opts.on("-l", "--labels [x,y,z]", Array,
+          "List of labels for which stats will be collected for each",
+          "scope. A label is an issue or pull request label, or special",
+          "values 'issues' and 'pulls' representing all issues and all",
+          "pull requests within the scope respectively. Default: 'issues'.",
+          "Example: --labels issues,bug,pulls", "\n") do |labels|
+    options[:labels] = labels
+  end
+
+  opts.on("-i", "--interval_length [STRING]", String,
+          "Size of interval for which stats will be aggregated. Intervals",
+          "are defined with N[hdwmy], where h is hour, d is day, w is week",
+          "m is month, y is year, and N is a positive integer used as a",
+          "multiplier. Default: '1w'. Example: --interval_length 4d", "\n") do |interval_length|
+    options[:interval_length] = interval_length
+  end
+
+  opts.on("-n", "--interval_count [INTEGER]", Integer,
+          "Number of intervals for which stats will be collected.",
+          "Default: 4. Example: --interval_count 2", "\n") do |interval_count|
+    options[:interval_count] = interval_count
+  end
+
+  opts.on("-o", "--output_format [STRING]", String,
+          "Format used for output tables with collected stats. Can be",
+          "'text' or 'markdown'. Default: 'text'. Example: -o markdown", "\n") do |output_format|
+    options[:output_format] = output_format
+  end
+
+  opts.on("--[no-]verbose", "Enable output of detailed debugging information to STDERR", "\n") do |verbose|
+    options[:verbose] = verbose
+  end
+
+  opts.on_tail("-h", "--help", "Show this message", "\n") do
+    STDERR.puts(opts)
+    exit
+  end
+
+  opts.on_tail("-v", "--version", "Show version", "\n") do
+    STDERR.puts(version)
+    exit
+  end
+end
+
+opt_parser.parse!
+
+def log_input_error(message, opt_parser)
+  STDERR.puts("ERROR: #{message}\n\n")
+  STDERR.puts(opt_parser)
+  exit
+end
+
+log_input_error("--token is required", opt_parser) if options[:token].nil?
+log_input_error("invalid --token format", opt_parser) unless /\A\h{40}\z/.match(options[:token])
+log_input_error("--scopes is required", opt_parser) if options[:scopes].nil?
+log_input_error("invalid --interval_length format", opt_parser) unless /\A\d[hdwmy]\z/.match(options[:interval_length])
+log_input_error("invalid --interval_count format", opt_parser) if options[:interval_count].nil? || options[:interval_count] < 1
+log_input_error("invalid --output_format", opt_parser) unless /\A(text)|(markdown)\z/.match(options[:output_format])
+
+options[:scopes] = Array(options[:scopes])
+options[:labels] = Array(options[:labels])
+
+github_issue_stats = GitHubIssueStats.new(options[:token], options[:verbose])
+
+STDERR.print "Collecting stats..."
+STDERR.flush
+
+stats = github_issue_stats.get_statistics(options)
+tables = github_issue_stats.generate_tables(stats, options)
+
+for scope, table in tables
+  puts "\n#{scope} stats:\n\n#{table}"
+end
