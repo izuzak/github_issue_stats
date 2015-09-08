@@ -124,6 +124,8 @@ Since the search API has [a low rate limit](https://developer.github.com/v3/sear
 
 # Roadmap
 
+* Generalize way for definig scopes and labels, perhaps just as a `--query` parameter which would take any [GitHub issues search query](https://help.github.com/articles/searching-issues/) as input and then that would be used directly when collecting stats. That would allow for a more powerful way to define queries for which stats are collected.
+
 * Markdown tables could be nicer.
 
 * Catch exceptions from API responses, e.g. 401s or 404s, and recover gracefully.
