@@ -74,7 +74,7 @@ The options which are supported are:
 Here's an example where the statistics for the `atom` organization are collected, for issues, pull requests and the `bug`, `enhancement` and `uncaught-exception` labels. The interval length is set to one week, and statistics are collected for four intervals. Note: I've defined my GitHub token in the `GITHUB_OAUTH_TOKEN` so I don't need to specify it with every command.
 
 ```
-github_issue_stats --scopes atom/atom,atom --labels issues,bug,enhancement,pulls --interval_length 1w --interval_count 4 --output_format markdown
+github_issue_stats --scopes atom --labels issues,bug,enhancement,pulls --interval_length 1w --interval_count 4 --output_format markdown
 ```
 
 Raw markdown output from the program:
