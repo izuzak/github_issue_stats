@@ -124,6 +124,10 @@ Since the search API has [a low rate limit](https://developer.github.com/v3/sear
 
 # Roadmap
 
+* Introduce commands for collecting different types of stats. The current functionality (historical data) would be exposed through a `history` command, for example. 
+
+* Add a new command (e.g. `breakdown`) which gives a breakdown of issues by age, e.g. number of open issues older than 2 years, 1 year, 6 months, 1 month, and 1 week. Support the same scopes and filters as in the `history` command.
+
 * Generalize way for definig scopes and labels, perhaps just as a `--query` parameter which would take any [GitHub issues search query](https://help.github.com/articles/searching-issues/) as input and then that would be used directly when collecting stats. That would allow for a more powerful way to define queries for which stats are collected.
 
 * Markdown tables could be nicer.
