@@ -122,14 +122,6 @@ The program starts by getting the current number of open issues for a specific s
 
 Since the search API has [a low rate limit](https://developer.github.com/v3/search/#rate-limit), statistics are collected slowly and it might take a minute or two to collect everything, depending on the number of defined scopes, labels and intervals.
 
-# Roadmap
-
-* Markdown tables could be nicer.
-
-* Catch exceptions from API responses, e.g. 401s or 404s, and recover gracefully.
-
-* Tests :(
-
 # Similar projects
 
 Let me know if you've noticed any similar projects!
