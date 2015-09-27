@@ -30,7 +30,7 @@ module Enumerable
 end
 
 class GitHubIssueStats
-  VERSION = "0.1.0"
+  VERSION = "0.2.0"
 
   attr_accessor :client,          # Octokit client for acesing the API
                 :logger,          # Logger for writing debugging info
