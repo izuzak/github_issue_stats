@@ -32,6 +32,7 @@ end
 Octokit.auto_paginate = true
 
 class GitHubIssueStats
+  VERSION = "0.1.0"
 
   attr_accessor :client,          # Octokit client for acesing the API
                 :logger,          # Logger for writing debugging info

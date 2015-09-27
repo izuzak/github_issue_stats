@@ -1,6 +1,9 @@
+$LOAD_PATH.push File.expand_path('../lib', __FILE__)
+require 'github_issue_stats'
+
 Gem::Specification.new do |s|
   s.name          = 'github_issue_stats'
-  s.version       = '0.1.0'
+  s.version       = GitHubIssueStats::VERSION
   s.date          = '2015-09-08'
   s.summary       = 'Utility for collecting stats on number of open issues over time in GitHub repositories.'
   s.authors       = ['Ivan Zuzak']
