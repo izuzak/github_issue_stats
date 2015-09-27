@@ -89,7 +89,7 @@ class GitHubIssueStats
   #   }
   # ]
   #
-  def get_statistics(options)
+  def get_history_statistics(options)
     # number_of_calls = get_required_number_of_api_calls(options)
     # @sleep_period = get_api_calls_sleep(number_of_calls)
 

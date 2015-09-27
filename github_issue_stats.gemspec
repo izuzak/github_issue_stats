@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.license       = 'MIT'
   s.require_paths = ['lib']
 
+  s.add_runtime_dependency('commander', '~> 4.3')
   s.add_runtime_dependency('octokit', '~> 4.0')
   s.add_runtime_dependency('text-table', '~> 1.2', '>= 1.2.4')
 end
