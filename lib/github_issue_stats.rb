@@ -29,9 +29,8 @@ module Enumerable
   end
 end
 
-Octokit.auto_paginate = true
-
 class GitHubIssueStats
+  VERSION = "0.1.0"
 
   attr_accessor :client,          # Octokit client for acesing the API
                 :logger,          # Logger for writing debugging info
@@ -46,7 +45,12 @@ class GitHubIssueStats
     @logger.debug "Creating a new Octokit client with token #{token[0..5]}"
 
     begin
-      @client = Octokit::Client.new(:access_token => token)
+      @client = Octokit::Client.new(
+        :access_token => token,
+        :auto_paginate => true,
+        :user_agent => "GitHubIssueStats/#{VERSION} (@izuzak) #{Octokit.user_agent}"
+      )
+
       @client.rate_limit
     rescue Octokit::Unauthorized => exception
       @logger.error "Token #{token[0..5]} is not valid"
