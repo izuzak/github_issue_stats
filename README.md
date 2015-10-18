@@ -27,6 +27,7 @@ github_issue_stats <command> [options]
 Available commands:
 
 * `history` - Collect stats on number of open issues over time
+* `breakdown` - Collect stats on number of open issues based on age
 
 To see the list of options and usage examples for a specific command, run this:
 
@@ -64,7 +65,7 @@ github_issue_stats help history
 There are several supported options:
 
 ```
--s, --scopes x,y,z               List of scopes for which stats will be collected. A scope is
+-s, --scopes x,y,z               (required) List of scopes for which stats will be collected. A scope is
                                  a username or repo name. Example: --scopes github,rails/rails
 
 -l, --labels [x,y,z]             List of labels for which stats will be collected for each
@@ -135,6 +136,100 @@ atom stats:
 This command uses the [GitHub Search API](https://developer.github.com/v3/search/) to get the number of open or closed issues in specific intervals and uses that to compute the other statistics.
 
 The program starts by getting the current number of open issues for a specific scope and label. It then collects the number of new issues created in the current interval, and the number of issues that were closed in the interval. Using these three numbers, the number of open issues at the beginning of the interval is computed. Finally, the computed number of issues at the beginning of the interval is taken as the number of open issues at the end of the previous interval, and the whole process is repeated until all intervals have been processed. Re-opened issues and pull requests are not taken into account, so these might cause some incorrectness in computed statistics.
+
+Since the search API has [a low rate limit](https://developer.github.com/v3/search/#rate-limit), statistics are collected slowly and it might take a minute or two to collect everything, depending on the number of defined scopes, labels and intervals.
+
+## `Breakdown` command
+
+The `breakdown` allows you to collect statistics on number of open issues or pull request based on age. You can scope the command to all issues or pull requests or for just specific labels, and also to a single repository or all repositories owned by a specific user or organization. Statistics are collected for specified intervals, for example less than two weeks old, between two weeks and three months, between three months and one year, and more than one year old.
+
+The collected statistics are shown in a table, such as this one:
+
+|             period              |                         [issues](https://github.com/issues?q=user:atom is:issue is:open)                          |                          [bug](https://github.com/issues?q=user:atom label:bug is:open)                           |                      [enhancement](https://github.com/issues?q=user:atom label:enhancement is:open)                       |                         [pulls](https://github.com/issues?q=user:atom is:pr is:open)                          |
+| :-----------------------------: | :---------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------: |
+| < 1 month (2015-10-01)             | [336](https://github.com/issues?q=user:atom is:issue is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [92](https://github.com/issues?q=user:atom label:bug is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [62](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [112](https://github.com/issues?q=user:atom is:pr is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z) |
+| > 1 month, < 3 months (2015-08-01) | [624](https://github.com/issues?q=user:atom is:issue is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  | [123](https://github.com/issues?q=user:atom label:bug is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [148](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [93](https://github.com/issues?q=user:atom is:pr is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  |
+| > 3 months, < 1 year (2014-11-01)  | [1912](https://github.com/issues?q=user:atom is:issue is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [481](https://github.com/issues?q=user:atom label:bug is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [655](https://github.com/issues?q=user:atom label:enhancement is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [156](https://github.com/issues?q=user:atom is:pr is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) |
+| > 1 year, < 2 years (2013-11-01)      | [710](https://github.com/issues?q=user:atom is:issue is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  | [260](https://github.com/issues?q=user:atom label:bug is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [354](https://github.com/issues?q=user:atom label:enhancement is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [20](https://github.com/issues?q=user:atom is:pr is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  |
+
+### Options
+
+To see the list of supported options and examples for this command, run this:
+
+```
+github_issue_stats help breakdown
+```
+
+There are several supported options:
+
+```
+-s, --scopes x,y,z               (required) List of scopes for which stats will be collected. A scope
+                                 is a username or repo name. Example: --scopes github,rails/rails
+
+-l, --labels [x,y,z]             List of labels for which stats will be collected for each scope. A
+                                 label is an issue or pull request label, or special values 'issues'
+                                 and 'pulls' representing all issues and all pull requests within the
+                                 scope respectively. Default: 'issues'.
+
+-i, --intervals [x,y,z]          List of intervals defining buckets into which issues will be grouped,
+                                 relative to the current date and time. Intervals are defined with
+                                 N[hdwmy], where h is hour, d is day, w is week m is month, y is year,
+                                 and N is a positive integer used as a multiplier.
+                                 Default: '1w,1m,3m,6m,12m,18m'.
+
+-o, --output_format [STRING]     Format used for output tables with collected stats. Can be 'text' or
+                                 'markdown'. Default: 'text'.
+```
+
+### Examples
+
+Here's an example where the statistics for the `atom` organization are collected, for issues, pull requests and the `bug`, `enhancement` and `uncaught-exception` labels. The interval length is set to one week, and statistics are collected for four intervals. Note: I've defined my GitHub token in the `GITHUB_OAUTH_TOKEN` so I don't need to specify it with every command.
+
+```
+github_issue_stats breakdown --scopes atom --labels issues,bug,enhancement,pulls --intervals 1m,3m,1y,2y --output_format markdown
+```
+
+Raw markdown output from the program:
+
+```
+atom stats:
+
+|             period              |                         [issues](https://github.com/issues?q=user:atom is:issue is:open)                          |                          [bug](https://github.com/issues?q=user:atom label:bug is:open)                           |                      [enhancement](https://github.com/issues?q=user:atom label:enhancement is:open)                       |                         [pulls](https://github.com/issues?q=user:atom is:pr is:open)                          |
+| :-----------------------------: | :---------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------: |
+| < 1 month (2015-10-01)             | [336](https://github.com/issues?q=user:atom is:issue is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [92](https://github.com/issues?q=user:atom label:bug is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [62](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [112](https://github.com/issues?q=user:atom is:pr is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z) |
+| > 1 month, < 3 months (2015-08-01) | [624](https://github.com/issues?q=user:atom is:issue is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  | [123](https://github.com/issues?q=user:atom label:bug is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [148](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [93](https://github.com/issues?q=user:atom is:pr is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  |
+| > 3 months, < 1 year (2014-11-01)  | [1912](https://github.com/issues?q=user:atom is:issue is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [481](https://github.com/issues?q=user:atom label:bug is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [655](https://github.com/issues?q=user:atom label:enhancement is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [156](https://github.com/issues?q=user:atom is:pr is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) |
+| > 1 year, < 2 years (2013-11-01)      | [710](https://github.com/issues?q=user:atom is:issue is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  | [260](https://github.com/issues?q=user:atom label:bug is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [354](https://github.com/issues?q=user:atom label:enhancement is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [20](https://github.com/issues?q=user:atom is:pr is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  |
+```
+
+Rendered markdown output:
+
+|             period              |                         [issues](https://github.com/issues?q=user:atom is:issue is:open)                          |                          [bug](https://github.com/issues?q=user:atom label:bug is:open)                           |                      [enhancement](https://github.com/issues?q=user:atom label:enhancement is:open)                       |                         [pulls](https://github.com/issues?q=user:atom is:pr is:open)                          |
+| :-----------------------------: | :---------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------: |
+| < 1 month (2015-10-01)             | [336](https://github.com/issues?q=user:atom is:issue is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [92](https://github.com/issues?q=user:atom label:bug is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [62](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z)  | [112](https://github.com/issues?q=user:atom is:pr is:open created:2015-10-01T09:05:18Z..2015-11-01T09:05:18Z) |
+| > 1 month, < 3 months (2015-08-01) | [624](https://github.com/issues?q=user:atom is:issue is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  | [123](https://github.com/issues?q=user:atom label:bug is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [148](https://github.com/issues?q=user:atom label:enhancement is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z) | [93](https://github.com/issues?q=user:atom is:pr is:open created:2015-08-01T09:05:18Z..2015-10-01T09:05:18Z)  |
+| > 3 months, < 1 year (2014-11-01)  | [1912](https://github.com/issues?q=user:atom is:issue is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [481](https://github.com/issues?q=user:atom label:bug is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [655](https://github.com/issues?q=user:atom label:enhancement is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) | [156](https://github.com/issues?q=user:atom is:pr is:open created:2014-11-01T09:05:18Z..2015-08-01T09:05:18Z) |
+| > 1 year, < 2 years (2013-11-01)     | [710](https://github.com/issues?q=user:atom is:issue is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  | [260](https://github.com/issues?q=user:atom label:bug is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [354](https://github.com/issues?q=user:atom label:enhancement is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z) | [20](https://github.com/issues?q=user:atom is:pr is:open created:2013-11-01T09:05:18Z..2014-11-01T09:05:18Z)  |
+
+With `--output_format text`, you'd get a table like this:
+
+```
+atom stats:
+
++------------------------------------+--------+-----+-------------+-------+
+|               period               | issues | bug | enhancement | pulls |
++------------------------------------+--------+-----+-------------+-------+
+| < 1 month (2015-10-01)             | 336    | 92  | 62          | 112   |
+| > 1 month, < 3 months (2015-08-01) | 624    | 123 | 148         | 93    |
+| > 3 months, < 1 year (2014-11-01)  | 1912   | 481 | 655         | 156   |
+| > 1 year, < 2 years (2013-11-01)   | 710    | 260 | 354         | 20    |
++------------------------------------+--------+-----+-------------+-------+
+
+```
+
+### How does the `breakdown` command work?
+
+Similar to [how the `history` command works](#how-does-the-history-command-work), the `breakdown` command uses the [GitHub Search API](https://developer.github.com/v3/search/) to get the number of issues created in specific intervals which are still open.
 
 Since the search API has [a low rate limit](https://developer.github.com/v3/search/#rate-limit), statistics are collected slowly and it might take a minute or two to collect everything, depending on the number of defined scopes, labels and intervals.
 

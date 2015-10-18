@@ -214,17 +214,17 @@ class GitHubIssueStats
     period_type = period[1]
 
     if period_type == "h"
-      return Time.new(current_time.year, current_time.month, current_time.day, current_time.hour, 0, 0, "+00:00")
+      return Time.utc(current_time.year, current_time.month, current_time.day, current_time.hour, 0, 0)
     elsif period_type == "d"
-      return Time.new(current_time.year, current_time.month, current_time.day, 0, 0, 0, "+00:00")
+      return Time.utc(current_time.year, current_time.month, current_time.day, 0, 0, 0)
     elsif period_type == "w"
       current_date = Date.new(current_time.year, current_time.month, current_time.day)
       previous_date = current_date - (current_date.cwday - 1)
-      previous_time = Time.new(previous_date.year, previous_date.month, previous_date.day, 0, 0, 0, "+00:00")
+      previous_time = Time.utc(previous_date.year, previous_date.month, previous_date.day, 0, 0, 0)
     elsif period_type == "m"
-      return Time.new(current_time.year, current_time.month, 1, 0, 0, 0, "+00:00")
+      return Time.utc(current_time.year, current_time.month, 1, 0, 0, 0)
     elsif period_type == "y"
-      return Time.new(current_time.year, 1, 1, 0, 0, 0, "+00:00")
+      return Time.utc(current_time.year, 1, 1, 0, 0, 0)
     else
       # TODO throw error
     end
@@ -234,7 +234,7 @@ class GitHubIssueStats
   # Computes the the beginning of the period based on the end of a period
   #
   def compute_previous_time(current_time, period)
-    period_number, period_type = period.chars
+    period_number, period_type = [period[0..-2], period[-1]]
     period_number = Integer(period_number)
 
     if period_type == "h"
@@ -242,13 +242,19 @@ class GitHubIssueStats
     elsif period_type == "d"
       return current_time - period_number * 3600 * 24
     elsif period_type == "w"
-      return current_time - 7 * 3600 * 24
+      return current_time - period_number * 7 * 3600 * 24
     elsif period_type == "m"
       current_date = Date.new(current_time.year, current_time.month, current_time.day)
-      previous_date = current_date.prev_month
-      previous_time = Time.new(previous_date.year, previous_date.month, previous_date.day, current_time.hour, current_time.min, current_time.sec, "+00:00")
+
+      temp_date = current_date
+      for i in 1..period_number
+        previous_date = temp_date.prev_month
+        temp_date = previous_date
+      end
+
+      previous_time = Time.utc(previous_date.year, previous_date.month, previous_date.day, current_time.hour, current_time.min, current_time.sec)
     elsif period_type == "y"
-      return Time.new(current_time.year - 1, current_time.month, current_time.day, current_time.hour, current_time.min, current_time.sec, "+00:00")
+      return Time.utc(current_time.year - period_number, current_time.month, current_time.day, current_time.hour, current_time.min, current_time.sec)
     else
       # TODO throw error
     end
@@ -330,7 +336,7 @@ class GitHubIssueStats
   #
   # Generates tables for collected statistics, for easy copy-pasting
   #
-  def generate_tables(stats, options)
+  def generate_history_tables(stats, options)
     def get_headers(labels, scope, output_format)
       if output_format == "markdown"
         return labels.map do |label|
@@ -417,7 +423,170 @@ class GitHubIssueStats
         data << [get_period_name(slice, options[:interval_length], index, options[:output_format])] + get_period_stats(slice, options[:labels], scope, options[:output_format])
       end
 
-      tables[scope] = options[:output_format] == "markdown" ? data.to_markdown_table : data.to_table(:first_row_is_head => true).to_s
+      tables[scope] = options[:output_format] == "markdown" ? generate_markdown_table_string(data) : generate_text_table_string(data)
+    end
+
+    return tables
+  end
+
+  def generate_text_table_string(data)
+    return data.to_table(:first_row_is_head => true).to_s
+  end
+
+  def generate_markdown_table_string(data)
+    data.to_markdown_table
+  end
+
+  def get_breakdown_statistics(options)
+    stats = []
+    current_timestamp = Time.now.utc
+    for interval in options[:intervals]
+      stats << get_breakdown_stats_for_interval(interval, current_timestamp, stats[-1], options)
+    end
+
+    return stats
+  end
+
+  def get_breakdown_stats_for_interval(interval, current_timestamp, previous_slice, options)
+    slice = {}
+
+    # set timestamps
+
+    if previous_slice.nil? # initial
+      slice[:current_timestamp] = current_timestamp
+    else # not initial
+      slice[:current_timestamp] = previous_slice[:previous_timestamp]
+    end
+
+    slice[:previous_timestamp] = compute_previous_time(current_timestamp, interval)
+
+    for scope in options[:scopes]
+      scope_stats = {}
+      slice[scope] = scope_stats
+
+      for label in options[:labels]
+        label_stats = {}
+        scope_stats[label] = label_stats
+
+        # number of open issues in period
+
+        search_options = {
+          :scope => scope,
+          :label => label,
+          :state => "open",
+          :created_at => {
+            :from => slice[:previous_timestamp],
+            :until => slice[:current_timestamp]
+          }
+        }
+
+        query_string = get_search_query_string(search_options)
+
+        label_stats[:interval_still_open_total_url] = get_search_url(query_string)
+        label_stats[:interval_still_open_total] = get_search_total_results(query_string)
+
+        @logger.debug "Computed total for interval: #{label_stats[:interval_still_open_total]}"
+      end
+    end
+
+    return slice
+  end
+
+  def generate_breakdown_tables(stats, options)
+    def get_headers(labels, scope, output_format)
+      if output_format == "markdown"
+        return labels.map do |label|
+          query_string = get_search_query_string({:scope => scope, :label => label, :state => "open"})
+          "[#{label}](#{get_search_url(query_string)})"
+        end
+      else
+        return labels
+      end
+    end
+
+    def get_interval_humanized_name(interval)
+      period_number, period_type = [interval[0..-2], interval[-1]]
+      period_number = Integer(period_number)
+
+      names = {
+        "h" => ["hour", "hours"],
+        "d" => ["day", "days"],
+        "w" => ["week", "weeks"],
+        "m" => ["month", "months"],
+        "y" => ["year", "years"]
+      }
+
+      if period_number == 1
+        return "#{period_number} #{names[period_type][0]}"
+      else
+        return "#{period_number} #{names[period_type][1]}"
+      end
+    end
+
+    def get_period_date(timestamp, period_type)
+      if period_type == "h"
+        return timestamp.strftime "%Y-%m-%d %H:00"
+      elsif period_type == "d"
+        return timestamp.strftime "%Y-%m-%d"
+      elsif period_type == "w"
+        return timestamp.strftime "%Y-%m-%d"
+      elsif period_type == "m"
+        return timestamp.strftime "%Y-%m"
+      elsif period_type == "y"
+        return timestamp.strftime "%Y"
+      else
+        # TODO throw error
+      end
+    end
+
+    def get_smallest_period_type(interval_types)
+      intervals = ["h", "d", "w", "m", "y"]
+      interval_types_indexes = interval_types.map { |interval_type| intervals.index(interval_type) }
+      interval_types_indexes << 1
+
+      return intervals[interval_types_indexes.min]
+    end
+
+    def get_period_name(slice, intervals, index, type)
+      current_interval = intervals[index]
+      current_period_number, current_period_type = [current_interval[0..-2], current_interval[-1]]
+      current_period_number = Integer(current_period_number)
+
+      if index == 0
+        smaller_period_type = get_smallest_period_type([current_period_type])
+
+        return "< #{get_interval_humanized_name(current_interval)} (#{get_period_date(slice[:previous_timestamp], smaller_period_type)})"
+      else
+        previous_interval = intervals[index-1]
+        previous_period_number, previous_period_type = [previous_interval[0..-2], previous_interval[-1]]
+        previous_period_number = Integer(previous_period_number)
+        smaller_period_type = get_smallest_period_type([current_period_type, previous_period_type])
+
+        return "> #{get_interval_humanized_name(previous_interval)}, < #{get_interval_humanized_name(current_interval)} (#{get_period_date(slice[:previous_timestamp], smaller_period_type)})"
+      end
+    end
+
+    def get_period_stats(slice, labels, scope, type)
+      return labels.map do |label|
+        if type == "markdown"
+          "[#{slice[scope][label][:interval_still_open_total]}](#{slice[scope][label][:interval_still_open_total_url]})"
+        else
+          "#{slice[scope][label][:interval_still_open_total]}"
+        end
+      end
+    end
+
+    tables = {}
+
+    for scope in options[:scopes]
+      data = []
+
+      data << ["period"] + get_headers(options[:labels], scope, options[:output_format])
+      stats.each_with_index do |slice, index|
+        data << [get_period_name(slice, options[:intervals], index, options[:output_format])] + get_period_stats(slice, options[:labels], scope, options[:output_format])
+      end
+
+      tables[scope] = options[:output_format] == "markdown" ? generate_markdown_table_string(data) : generate_text_table_string(data)
     end
 
     return tables

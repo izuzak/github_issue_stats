@@ -16,6 +16,51 @@ Commander.configure do
   global_option '--verbose', "Enable output of detailed debugging information to STDERR"
   global_option '--token STRING', String, "GitHub OAuth token for making API calls. If not specified, the GITHUB_OAUTH_TOKEN environment variable is used. Create a token here: https://github.com/settings/token"
 
+  command :breakdown do |c|
+    c.syntax = 'github_issue_stats breakdown [options]'
+    c.description = 'Collect stats on number of open issues based on age'
+
+    c.option '-s', '--scopes x,y,z', Array, "(required) List of scopes for which stats will be collected. A scope is a username or repo name. Example: --scopes github,rails/rails"
+    c.option '-l', '--labels [x,y,z]', Array, "List of labels for which stats will be collected for each scope. A label is an issue or pull request label, or special values 'issues' and 'pulls' representing all issues and all pull requests within the scope respectively. Default: 'issues'."
+    c.option '-i', '--intervals [x,y,z]', Array, "List of intervals defining buckets into which issues will be grouped, relative to the current date and time. Intervals are defined with N[hdwmy], where h is hour, d is day, w is week m is month, y is year, and N is a positive integer used as a multiplier. Default: '1w,1m,3m,6m,12m,18m'."
+    c.option '-o', '--output_format [STRING]', String, "Format used for output tables with collected stats. Can be 'text' or 'markdown'. Default: 'text'."
+
+    c.example "Statistics for the atom organization, for issues, pull requests, bug and enhancement labels, with buckets defined by one month, three months, one year, and two years, with Markdown output", "github_issue_stats breakdown -s atom -l issues,bug,enhancement,pulls -i 1m,3m,1y,2y -o markdown"
+
+    c.action do |args, options|
+      options.default \
+        :verbose => false,
+        :token => ENV["GITHUB_OAUTH_TOKEN"],
+        :output_format => 'text',
+        :labels => "issues",
+        :intervals => ["1w", "1m", "3m", "6m", "12m", "18m"]
+
+      options.scopes = Array(options.scopes)
+      options.labels = Array(options.labels)
+      options.intervals = Array(options.intervals)
+
+      raise ArgumentError.new("--token is required") if options.token.nil?
+      raise ArgumentError.new("invalid --token format") unless /\A\h{40}\z/.match(options.token)
+      raise ArgumentError.new("--scopes is required") if options.scopes.nil?
+      raise ArgumentError.new("invalid --intervals format") if options.intervals.nil?
+      raise ArgumentError.new("invalid --output_format") unless /\A(text)|(markdown)\z/.match(options.output_format)
+
+      github_issue_stats = GitHubIssueStats.new(options.token, options.verbose)
+
+      STDERR.print "Collecting stats..."
+      STDERR.flush
+
+      stats = github_issue_stats.get_breakdown_statistics(options.__hash__)
+      tables = github_issue_stats.generate_breakdown_tables(stats, options.__hash__)
+
+      for scope, table in tables
+        puts "\n#{scope} stats:\n\n#{table}"
+      end
+
+      cli.say("Done!")
+    end
+  end
+
   command :history do |c|
     c.syntax = 'github_issue_stats history [options]'
     c.description = 'Collect stats on number of open issues over time'
@@ -24,7 +69,7 @@ Commander.configure do
     c.option '-l', '--labels [x,y,z]', Array, "List of labels for which stats will be collected for each scope. A label is an issue or pull request label, or special values 'issues' and 'pulls' representing all issues and all pull requests within the scope respectively. Default: 'issues'."
     c.option '-i', '--interval_length [STRING]', String, "Size of interval for which stats will be aggregated. Intervals are defined with N[hdwmy], where h is hour, d is day, w is week m is month, y is year, and N is a positive integer used as a multiplier. Default: '1w'."
     c.option '-n', '--interval_count [INTEGER]', Integer, "Number of intervals for which stats will be collected. Default: 4."
-    c.option '-o', '--output_format [STRING]', String, "Format used for output tables with collected stats. Can be 'text' or 'markdown'."
+    c.option '-o', '--output_format [STRING]', String, "Format used for output tables with collected stats. Can be 'text' or 'markdown'. Default: 'text'."
 
     c.example "Statistics for the atom organization, for issues, pull requests, bug and enhancement labels, going back four one-week intervals, with Markdown output", "github_issue_stats history -s atom -l issues,bug,enhancement,pulls -i 1w -n 4 -o markdown"
 
@@ -53,7 +98,7 @@ Commander.configure do
       STDERR.flush
 
       stats = github_issue_stats.get_history_statistics(options.__hash__)
-      tables = github_issue_stats.generate_tables(stats, options.__hash__)
+      tables = github_issue_stats.generate_history_tables(stats, options.__hash__)
 
       for scope, table in tables
         puts "\n#{scope} stats:\n\n#{table}"
