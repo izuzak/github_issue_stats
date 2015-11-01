@@ -4,7 +4,7 @@ require 'github_issue_stats'
 Gem::Specification.new do |s|
   s.name          = 'github_issue_stats'
   s.version       = GitHubIssueStats::VERSION
-  s.date          = '2015-09-08'
+  s.date          = '2015-11-01'
   s.summary       = 'Utility for collecting stats on number of open issues over time in GitHub repositories.'
   s.authors       = ['Ivan Zuzak']
   s.email         = 'izuzak@gmail.com'
