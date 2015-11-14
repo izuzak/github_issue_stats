@@ -1,5 +1,5 @@
 require "logger"
-require "Octokit"
+require "octokit"
 require "time"
 require "text-table"
 
