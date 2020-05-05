@@ -307,7 +307,7 @@ class GitHubIssueStats
     elsif options[:label] == "pulls"
       query += "is:pr "
     else
-      query += "label:#{options[:label]} "
+      query += "label:\"#{options[:label]}\" "
     end
 
     if !options[:state].nil?
