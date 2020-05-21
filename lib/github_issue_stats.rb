@@ -47,7 +47,7 @@ class GitHubIssueStats
     begin
       @client = Octokit::Client.new(
         :access_token => token,
-        :auto_paginate => true,
+        :auto_paginate => false,
         :user_agent => "GitHubIssueStats/#{VERSION} (@izuzak) #{Octokit.user_agent}"
       )
 
@@ -197,7 +197,7 @@ class GitHubIssueStats
       STDERR.flush
     end
 
-    result = @client.search_issues(query_string)
+    result = @client.search_issues(query_string, {:per_page => 1})
     @logger.debug "Total count: #{result.total_count}"
 
     if result.incomplete_results
@@ -275,15 +275,15 @@ class GitHubIssueStats
 
     rate_limit_data = @client.get("https://api.github.com/rate_limit")
 
-    if rate_limit_data[:resources][:core][:remaining] == 0
+    if rate_limit_data[:resources][:core][:remaining] <= 2
       reset_timestamp = rate_limit_data[:resources][:core][:reset]
-      sleep_seconds = reset_timestamp - Time.now.to_i
-      @logger.warn "Remaining regular API rate limit is 0, sleeping for #{sleep_seconds} seconds."
+      sleep_seconds = reset_timestamp - Time.now.to_i + 3
+      @logger.warn "Remaining regular API rate limit is close to 0, sleeping for #{sleep_seconds} seconds."
       sleep(sleep_seconds)
-    elsif rate_limit_data[:resources][:search][:remaining] == 0
+elsif rate_limit_data[:resources][:search][:remaining] <= 2
       reset_timestamp = rate_limit_data[:resources][:search][:reset]
-      sleep_seconds = reset_timestamp - Time.now.to_i
-      @logger.warn "Remaining search API rate limit is 0, sleeping for #{sleep_seconds} seconds."
+      sleep_seconds = reset_timestamp - Time.now.to_i + 3
+      @logger.warn "Remaining search API rate limit is close to 0, sleeping for #{sleep_seconds} seconds."
       sleep(sleep_seconds)
     elsif
       sleep(1)
