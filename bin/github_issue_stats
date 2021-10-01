@@ -40,7 +40,7 @@ Commander.configure do
       options.intervals = Array(options.intervals)
 
       raise ArgumentError.new("--token is required") if options.token.nil?
-      raise ArgumentError.new("invalid --token format") unless /\A\h{40}\z/.match(options.token)
+      raise ArgumentError.new("invalid --token format") unless (/\A\h{40}\z/.match(options.token) || /\Agh(p|o|u|s|r)_[A-Za-z0-9]+\z/.match(options.token))
       raise ArgumentError.new("--scopes is required") if options.scopes.nil?
       raise ArgumentError.new("invalid --intervals format") if options.intervals.nil?
       raise ArgumentError.new("invalid --output_format") unless /\A(text)|(markdown)\z/.match(options.output_format)
@@ -86,7 +86,7 @@ Commander.configure do
       options.labels = Array(options.labels)
 
       raise ArgumentError.new("--token is required") if options.token.nil?
-      raise ArgumentError.new("invalid --token format") unless /\Agh(p|o|u|s|r)_[A-Za-z0-9]+\z/.match(options.token)
+      raise ArgumentError.new("invalid --token format") unless (/\A\h{40}\z/.match(options.token) || /\Agh(p|o|u|s|r)_[A-Za-z0-9]+\z/.match(options.token))
       raise ArgumentError.new("--scopes is required") if options.scopes.nil?
       raise ArgumentError.new("invalid --interval_length format") unless /\A\d[hdwmy]\z/.match(options.interval_length)
       raise ArgumentError.new("invalid --interval_count format") if options.interval_count.nil? || options.interval_count < 1
